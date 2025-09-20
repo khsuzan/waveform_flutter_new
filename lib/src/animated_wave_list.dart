@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
+import 'package:waveform_flutter_new/src/waveform_event_controller.dart';
 
 import 'amplitude.dart';
 import 'listmodel.dart';
@@ -15,10 +18,12 @@ class AnimatedWaveList extends StatefulWidget {
   const AnimatedWaveList({
     required this.stream,
     this.barBuilder,
+    this.eventController,
     super.key,
   });
 
   final Stream<Amplitude> stream; // The stream of amplitude values.
+  final WaveformEventController? eventController;
   final Widget Function(Animation<double> animation, Amplitude amplitude)?
       barBuilder;
 
@@ -32,6 +37,8 @@ class _AnimatedWaveListState extends State<AnimatedWaveList> {
 
   // Model for managing the list of amplitude values
   late ListModel<Amplitude> _list;
+  StreamSubscription<dynamic>? eventControllerSubscription;
+  StreamSubscription<Amplitude>? streamSubscription;
 
   // Builds a waveform bar widget using the provided animation and amplitude.
   //
@@ -73,9 +80,34 @@ class _AnimatedWaveListState extends State<AnimatedWaveList> {
     );
 
     // Listen to the stream and insert new amplitude values into the list.
-    widget.stream.listen((event) {
+    streamSubscription = widget.stream.listen((event) {
       if (mounted) _insert(event);
     });
+
+    eventControllerSubscription =
+        widget.eventController?.eventStream.listen((event) {
+      switch (event) {
+        case WaveformEventType.clear:
+          final itemCount = _list.length;
+          for (var i = itemCount - 1; i >= 0; i--) {
+            _list.removeAt(i);
+          }
+        case WaveformEventType.start:
+          // Handle start event if needed
+          break;
+        case WaveformEventType.stop:
+          // Handle stop event if needed
+          break;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    eventControllerSubscription?.cancel();
+    streamSubscription?.cancel();
+    widget.eventController?.dispose();
+    super.dispose();
   }
 
   // Build the AnimatedList widget.
